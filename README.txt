@@ -3,8 +3,9 @@ Contact Info
 
 Group Members & Email Addresses:
 
-    Person 1, person1@uky.edu
-    Person 2, person2@uky.edu
+    Christian Bruwer, cebr276@uky.edu
+    Caleb Burnett, cdbu246@uky.edu
+    Ben Carey, bjca251@uky.edu
 
 Versioning
 ==========
