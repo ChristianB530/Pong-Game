@@ -10,13 +10,26 @@ import pygame
 import tkinter as tk
 import sys
 import socket
+from typing import Tuple
 
 from assets.code.helperCode import *
+
+def sendPaddle(client: socket.socket, playerPaddle: Paddle):
+    # send paddle data to server
+    pass
+
+# this call will be blocking until opponent catches up.
+# let's test this; if it is too slow/jittery we can revise.
+def syncClient(client: socket.socket, sync: int):
+    # send current sync to server, wait for server to give green flag for continue.
+    # spinloop here until we receive greenFlag from server
+    client.recv(...)
+    pass
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
 # to suit your needs.
-def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.socket) -> None:
+def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: socket.socket) -> None:
     
     # Pygame inits
     pygame.mixer.pre_init(44100, -16, 2, 2048)
@@ -84,6 +97,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # where the ball is and the current score.
         # Feel free to change when the score is updated to suit your needs/requirements
         
+        sendPaddle(client, playerPaddleObj)
         
         # =========================================================================================
 
@@ -156,16 +170,47 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # Send your server update here at the end of the game loop to sync your game with your
         # opponent's game
 
+        syncClient(client, sync)
+
         # =========================================================================================
 
+# Packet Structure:
+#
+# (int, int, bool):
+# - window width,
+# - window height,
+# - side of paddle (True if you're the left paddle.)
+# sockets are raw binary streams, so we will use string parsing to convert what
+# we receive from sockets into data values.
+
+# Note: this function blocks while waiting for server response. It is called
+# once at the start of the client script.
+def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, bool]:
+    # connect to server
+    something = client.connect(ip, port)
 
 
+    # send request packet (POST)
+    message = "give_me_my_window_width_height_and_side"
+    client.send(message, len(messag))
+
+    # receive from server
+    mystring = ""
+    socket.recv(mystring)
+
+    # do error checking (if server timed out just kill the client)
+
+    # parse all this
+    # window screen for game dimensions, as well as size
+    window_width, window_height, side = some_kind_of_string_parsing(mystring)
+
+    return (window_width, window_height, side);
 
 # This is where you will connect to the server to get the info required to call the game loop.  Mainly
 # the screen width, height and player paddle (either "left" or "right")
 # If you want to hard code the screen's dimensions into the code, that's fine, but you will need to know
 # which client is which
-def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
+def joinServer(ip: str, port: str, errorLabel: tk.Label, app: tk.Tk) -> None:
     # Purpose:      This method is fired when the join button is clicked
     # Arguments:
     # ip            A string holding the IP address of the server
@@ -177,8 +222,10 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # You don't have to use SOCK_STREAM, use what you think is best
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # Get the required information from your server (screen width, height & player paddle, "left or "right)
+    # Get the required information from your server (screen width, height & player paddle, "left or "right")
+    window_width, window_height, side = connectClient(client, ip, port)
 
+    # now do stuff with these thangs.
 
     # If you have messages you'd like to show the user use the errorLabel widget like so
     errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
