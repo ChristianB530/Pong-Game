@@ -24,23 +24,54 @@ class Server:
         self.port = port
         self.leftPaddleState = ""
         self.rightPaddleState = ""
+        self.sock = None
         # x,y coords for each
         # may be useful to pull out paddle states into classes, but might be too much
 
     def start(self):
         # some kind of data initialization
         # main loop...
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        address = "0.0.0.0"
+        self.sock.bind((address, self.port))
+        self.sock.listen()
+        print("Server started at " + address + ":" + str(self.port))
+
+        while True:
+            conn, addr = self.sock.accept()
+            print(f"Connected to {addr}")
+            threading.Thread(target=Server.handleClient, args=(self, conn, addr), daemon=True).start()
 
         # what happens when server receives connectClient?
         # what happens when client disconnects?
         # what happens when one client wins? endgame state?
         # restart is extra credit... :D
 
-        if rightClient.sync < leftClient.sync:
-            greenFlag(rightClient)
-        else:
-            greenFlag(leftClient)
+        #if rightClient.sync < leftClient.sync:
+        #    greenFlag(rightClient)
+        #else:
+        #    greenFlag(leftClient)
         pass
+
+    def handleClient(self, conn, addr):
+        print("connection get!")
+        recv = None
+        while True:
+            recv = conn.recv(1024).decode()
+            if not recv:
+                break
+            print(f"Received from {addr}: {recv}")
+            args = recv.split(' ')
+            if args[0] == "get_rekt":
+                response = "no_u 800 600 right"
+                conn.send(bytes(response, "utf-8"))
+            elif args[0] == "sync":
+                print("sync is a TODO")
+                TODO
+        print(f"Closing {addr}")
+        conn.close()
 
     def greenFlag(client):
 
@@ -56,6 +87,6 @@ class Server:
             sendInitSpectator()
 
 if __name__ == "__main__":
-    server = Server(8080)
+    server = Server(65431)
     server.start()
 

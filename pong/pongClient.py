@@ -23,8 +23,14 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle):
 def syncClient(client: socket.socket, sync: int):
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
-    client.recv(...)
-    pass
+    s = "sync " + str(sync)
+    b = bytes(s, "utf-8")
+    client.send(b)
+
+    received_packet = client.recv(256)
+
+    # do something with it
+    print("received packet of length " + str(len(received_packet)))
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
@@ -187,24 +193,22 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
 # once at the start of the client script.
 def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, bool]:
     # connect to server
-    something = client.connect(ip, port)
-
+    client.connect((ip, int(port)))
 
     # send request packet (POST)
-    message = "give_me_my_window_width_height_and_side"
-    client.send(message, len(messag))
+    message: str = "get_rekt"
+    client.send(bytes(message, "utf-8"))
 
     # receive from server
-    mystring = ""
-    socket.recv(mystring)
+    received_packet: str = client.recv(256).decode()
 
     # do error checking (if server timed out just kill the client)
 
     # parse all this
     # window screen for game dimensions, as well as size
-    window_width, window_height, side = some_kind_of_string_parsing(mystring)
+    args: list[str] = received_packet.split(' ')
 
-    return (window_width, window_height, side);
+    return (int(args[1]), int(args[2]), args[3] == "right");
 
 # This is where you will connect to the server to get the info required to call the game loop.  Mainly
 # the screen width, height and player paddle (either "left" or "right")
@@ -233,9 +237,9 @@ def joinServer(ip: str, port: str, errorLabel: tk.Label, app: tk.Tk) -> None:
     errorLabel.update()     
 
     # Close this window and start the game with the info passed to you from the server
-    #app.withdraw()     # Hides the window (we'll kill it later)
-    #playGame(screenWidth, screenHeight, ("left"|"right"), client)  # User will be either left or right paddle
-    #app.quit()         # Kills the window
+    app.withdraw()     # Hides the window (we'll kill it later)
+    playGame(window_width, window_height, ("right"), client)  # User will be either left or right paddle
+    app.quit()         # Kills the window
 
 
 # This displays the opening screen, you don't need to edit this (but may if you like)
@@ -269,7 +273,7 @@ def startScreen():
     app.mainloop()
 
 if __name__ == "__main__":
-    #startScreen()
+    startScreen()
     
     # Uncomment the line below if you want to play the game without a server to see how it should work
     # the startScreen() function should call playGame with the arguments given to it by the server this is
