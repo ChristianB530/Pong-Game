@@ -23,7 +23,7 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle):
 def syncClient(client: socket.socket, sync: int):
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
-    s = "sync " + str(sync)
+    s = "sync" + str(sync)
     b = bytes(s, "utf-8")
     client.send(b)
 
@@ -31,6 +31,14 @@ def syncClient(client: socket.socket, sync: int):
 
     # do something with it
     print("received packet of length " + str(len(received_packet)))
+
+    # decode the packet
+    received_str = received_packet.decode(received_packet)
+    # skip the word "sync"
+    opp_time = received_str[len("sync"):]
+
+    # this is where we update our own clock by returning the received packets clock value
+    return int(opp_time)
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
@@ -173,12 +181,19 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # This number should be synchronized between you and your opponent.  If your number is larger
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
+
+        # should this happen first? i think so because we are moving it forward
         sync += 1
+        
         # =========================================================================================
         # Send your server update here at the end of the game loop to sync your game with your
         # opponent's game
 
-        syncClient(client, sync)
+        # function returns opponent clock as an int
+        other_player_clock = syncClient(client, sync)
+        if other_player_clock > sync:
+            sync = other_player_clock
+
 
         # =========================================================================================
 

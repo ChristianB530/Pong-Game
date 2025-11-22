@@ -69,6 +69,13 @@ class Server:
                 conn.send(bytes(response, "utf-8"))
             elif args[0] == "sync":
                 print("sync is a TODO")
+                # need to send each clients sync time to each other client at the same time.
+                # something like
+                # for each other threaded client, 
+                    # send this sync 
+                    # server.send(recv)
+
+                    
                 TODO
         print(f"Closing {addr}")
         conn.close()
