@@ -16,7 +16,16 @@ from assets.code.helperCode import *
 
 def sendPaddle(client: socket.socket, playerPaddle: Paddle):
     # send paddle data to server
-    pass
+    x = playerPaddle.rect.x
+    y = playerPaddle.rect.y
+    moving = playerPaddle.moving or "none"
+
+    #Ex: "paddle 100 100 up", "paddle 50 100 none"
+    #The whole thing as string, the server split it.
+    #I implement the server size as well, the server side should recognize the by arg[0] = paddle
+    #Change it how you like tho 
+    packet = f"paddle {x} {y} {moving}"
+    client.send(packet.encode("utf-8"))
 
 # this call will be blocking until opponent catches up.
 # let's test this; if it is too slow/jittery we can revise.
