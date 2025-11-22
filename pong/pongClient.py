@@ -14,6 +14,12 @@ from typing import Tuple
 
 from assets.code.helperCode import *
 
+class EnemyData:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.score = 0
+
 def sendPaddle(client: socket.socket, playerPaddle: Paddle):
     # send paddle data to server
     x = playerPaddle.rect.x
@@ -29,10 +35,10 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle):
 
 # this call will be blocking until opponent catches up.
 # let's test this; if it is too slow/jittery we can revise.
-def syncClient(client: socket.socket, sync: int):
+def syncClient(client: socket.socket, sync: int, side: str) -> EnemyData:
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
-    s = "sync" + str(sync)
+    s = "sync " + str(sync) + " " + side
     b = bytes(s, "utf-8")
     client.send(b)
 
@@ -42,9 +48,9 @@ def syncClient(client: socket.socket, sync: int):
     print("received packet of length " + str(len(received_packet)))
 
     # decode the packet
-    received_str = received_packet.decode(received_packet)
+    received_str = received_packet.decode("utf-8")
     # skip the word "sync"
-    opp_time = received_str[len("sync"):]
+    opp_time = received_str[len("sync "):]
 
     # this is where we update our own clock by returning the received packets clock value
     return int(opp_time)
@@ -199,7 +205,7 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # opponent's game
 
         # function returns opponent clock as an int
-        other_player_clock = syncClient(client, sync)
+        other_player_clock = syncClient(client, sync, playerPaddle)
         if other_player_clock > sync:
             sync = other_player_clock
 
@@ -217,7 +223,7 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
 
 # Note: this function blocks while waiting for server response. It is called
 # once at the start of the client script.
-def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, bool]:
+def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, str]:
     # connect to server
     client.connect((ip, int(port)))
 
@@ -234,7 +240,7 @@ def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, 
     # window screen for game dimensions, as well as size
     args: list[str] = received_packet.split(' ')
 
-    return (int(args[1]), int(args[2]), args[3] == "right");
+    return (int(args[1]), int(args[2]), args[3]);
 
 # This is where you will connect to the server to get the info required to call the game loop.  Mainly
 # the screen width, height and player paddle (either "left" or "right")
@@ -264,7 +270,7 @@ def joinServer(ip: str, port: str, errorLabel: tk.Label, app: tk.Tk) -> None:
 
     # Close this window and start the game with the info passed to you from the server
     app.withdraw()     # Hides the window (we'll kill it later)
-    playGame(window_width, window_height, ("right"), client)  # User will be either left or right paddle
+    playGame(window_width, window_height, side, client)  # User will be either left or right paddle
     app.quit()         # Kills the window
 
 
@@ -283,7 +289,6 @@ def startScreen():
 
     ipEntry = tk.Entry(app)
     ipEntry.grid(column=1, row=1)
-
     portLabel = tk.Label(text="Server Port:")
     portLabel.grid(column=0, row=2, sticky="W", padx=8)
 
@@ -304,4 +309,4 @@ if __name__ == "__main__":
     # Uncomment the line below if you want to play the game without a server to see how it should work
     # the startScreen() function should call playGame with the arguments given to it by the server this is
     # here for demo purposes only
-    playGame(640, 480,"left",socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    # playGame(640, 480,"left",socket.socket(socket.AF_INET, socket.SOCK_STREAM))
