@@ -103,6 +103,8 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # where the ball is and the current score.
         # Feel free to change when the score is updated to suit your needs/requirements
         
+        # Possible packet structure:
+        # sendPaddle(client, playerPaddleObj, ball, lscore, rscore)
         sendPaddle(client, playerPaddleObj)
         
         # =========================================================================================
