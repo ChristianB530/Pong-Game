@@ -14,13 +14,7 @@ from typing import Tuple
 
 from assets.code.helperCode import *
 
-class EnemyData:
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.score = 0
-
-def sendPaddle(client: socket.socket, playerPaddle: Paddle):
+def sendPaddle(client: socket.socket, playerPaddle: Paddle, side: str, lscore: int, rscore: int):
     # send paddle data to server
     x = playerPaddle.rect.x
     y = playerPaddle.rect.y
@@ -30,12 +24,12 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle):
     #The whole thing as string, the server split it.
     #I implement the server size as well, the server side should recognize the by arg[0] = paddle
     #Change it how you like tho 
-    packet = f"paddle {x} {y} {moving}"
+    packet = f"paddle {side} {x} {y} {moving} {lscore} {rscore}"
     client.send(packet.encode("utf-8"))
 
 # this call will be blocking until opponent catches up.
 # let's test this; if it is too slow/jittery we can revise.
-def syncClient(client: socket.socket, sync: int, side: str) -> EnemyData:
+def syncClient(client: socket.socket, sync: int, side: str) -> Tuple[int, int, int, int]:
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
     s = "sync " + str(sync) + " " + side
@@ -48,12 +42,15 @@ def syncClient(client: socket.socket, sync: int, side: str) -> EnemyData:
     print("received packet of length " + str(len(received_packet)))
 
     # decode the packet
-    received_str = received_packet.decode("utf-8")
-    # skip the word "sync"
-    opp_time = received_str[len("sync "):]
+    args = received_packet.decode("utf-8").split(' ')
+
+    opp_time = int(args[1])
+    opp_x = int(args[2])
+    opp_y = int(args[3])
+    opp_score = int(args[4])
 
     # this is where we update our own clock by returning the received packets clock value
-    return int(opp_time)
+    return (opp_time, opp_x, opp_y, opp_score)
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
@@ -128,12 +125,12 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         
         # Possible packet structure:
         # sendPaddle(client, playerPaddleObj, ball, lscore, rscore)
-        sendPaddle(client, playerPaddleObj)
+        sendPaddle(client, playerPaddleObj, playerPaddle, lScore, rScore)
         
         # =========================================================================================
 
         # Update the player paddle and opponent paddle's location on the screen
-        for paddle in [playerPaddleObj, opponentPaddleObj]:
+        for paddle in [playerPaddleObj]:
             if paddle.moving == "down":
                 if paddle.rect.bottomleft[1] < screenHeight-10:
                     paddle.rect.y += paddle.speed
@@ -205,9 +202,17 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # opponent's game
 
         # function returns opponent clock as an int
-        other_player_clock = syncClient(client, sync, playerPaddle)
-        if other_player_clock > sync:
-            sync = other_player_clock
+        other_player_clock, opp_x, opp_y, opp_score = syncClient(client, sync, playerPaddle)
+        opponentPaddleObj.rect.x = opp_x
+        opponentPaddleObj.rect.y = opp_y
+
+        if playerPaddle == "left":
+            rScore = opp_score
+        elif playerPaddle == "right":
+            lScore = opp_score
+
+        #if other_player_clock > sync:
+            #sync = other_player_clock
 
 
         # =========================================================================================
@@ -239,6 +244,7 @@ def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, 
     # parse all this
     # window screen for game dimensions, as well as size
     args: list[str] = received_packet.split(' ')
+    print("side: " + args[3])
 
     return (int(args[1]), int(args[2]), args[3]);
 

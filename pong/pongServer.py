@@ -8,6 +8,7 @@
 
 import socket
 import threading
+from time import sleep
 
 # Use this file to write your server logic
 # You will need to support at least two clients
@@ -18,10 +19,23 @@ import threading
 # clients are and take actions to resync the games
 
 class Connection:
-    def __init__(self, conn, side_str):
+    def __init__(self, conn, side_str) -> None:
+        self.conn: socket.SocketType = conn
+        self.sync: int = 0
+        self.side_str: str = side_str
+        self.x: int = 0
+        self.y: int = 0
+        self.score: int = 0
+
+class Spectator:
+    def __init__(self, conn):
         self.conn = conn
-        self.sync = 0
-        self.side_str = side_str
+        self.left_x = 0
+        self.left_y = 0
+        self.left_score = 0
+        self.right_x = 0
+        self.right_y = 0
+        self.right_score = 0
 
 class Server:
     def __init__(self, port: int):
@@ -31,13 +45,14 @@ class Server:
         self.leftPaddleState = ""
         self.rightPaddleState = ""
         self.sock = None
+        self.ball_pos = [0, 0]
 
-        # (ass)
         self.left_connection = None
         self.left_flagged = False
         self.right_connection = None
         self.right_flagged = False
 
+        self.spectators: list[Connection] = []
         # x,y coords for each
         # may be useful to pull out paddle states into classes, but might be too much
 
@@ -76,12 +91,17 @@ class Server:
             if args[0] == "get_rekt":
                 if self.left_connection is None:
                     side_str = "left"
-                    self.left_connection = [conn, 0]
+                    self.left_connection = Connection(conn, 0)
+                    #self.left_connection.x = 10
+                    #self.left_connection.y = (self.screenHeight/2) - (25)
                 elif self.right_connection is None:
                     side_str = "right"
-                    self.right_connection = [conn, 0]
+                    self.right_connection = Connection(conn, 0)
+                    #self.right_connection.x = self.screenWidth - 20
+                    #self.right_connection.y = (self.screenHeight/2) - (25)
                 else:
                     side_str = "spectator"
+                    self.spectators.append(Spectator(conn))
 
                 response = "no_u 800 600 " + side_str
                 conn.send(bytes(response, "utf-8"))
@@ -90,43 +110,62 @@ class Server:
             elif args[0] == "sync":
                 sync = int(args[1])
                 if args[2] == "left":
-                    self.left_connection[1] = sync
+                    self.left_connection.sync = sync
                     self.left_flagged = False
                 else:
-                    self.right_connection[1] = sync
+                    self.right_connection.sync = sync
                     self.right_flagged = False
 
             elif args[0] == "paddle":
                 #args = ["paddle", x, y, moving]
-                x = int(args[1])
-                y = int(args[2])
-                moving = args[3]
-                #This should tell you paddle, location, and movement
-                print(f"Paddle info from {addr}. {x},{y},{moving}")
+                side = args[1]
+                if side == "left":
+                    self.left_connection.x = int(args[2])
+                    self.left_connection.y = int(args[3])
+                    self.left_connection.moving = args[4]
+                    self.left_connection.score = args[5]
+                elif side == "right":
+                    self.right_connection.x = int(args[2])
+                    self.right_connection.y = int(args[3])
+                    self.right_connection.moving = args[4]
+                    self.right_connection.score = args[6]
 
         print(f"Closing {addr}")
         if side == "left":
             self.left_connection = None
         elif side == "right":
             self.right_connection = None
+        else:
+            for i in range(len(self.spectators)):
+                if self.spectators[i].conn == conn:
+                    self.spectators.remove(i)
+                    break
         conn.close()
 
     def update(self, foo):
         while True:
+            sleep(0.01)
+
+            for tator in self.spectators:
+                message = "tator "
+                message += str(self.left_connection.x) + " " + str(self.left_connection.y) + " " + str(self.left_connection.score) + " "
+                message += str(self.right_connection.x) + " " + str(self.right_connection.y) + " " + str(self.right_connection.score)
+
+
             if self.left_connection is None or self.right_connection is None:
                 continue
 
-            print("we are now updating")
-            if self.left_connection[1] >= self.right_connection[1] and not self.left_flagged:
-                self.greenFlag(self.right_connection[0], self.right_connection[1])
+            if self.left_connection.sync >= self.right_connection.sync and not self.left_flagged:
+                self.greenFlag(self.right_connection, self.left_connection)
                 self.left_flagged = True
-            if self.left_connection[1] <= self.right_connection[1] and not self.right_flagged:
-                self.greenFlag(self.left_connection[0], self.left_connection[1])
+
+            if self.left_connection.sync <= self.right_connection.sync and not self.right_flagged:
+                self.greenFlag(self.left_connection, self.right_connection)
                 self.right_flagged = True
 
-    def greenFlag(self, cli, sync):
-        message = "sync " + str(sync)
-        cli.send(bytes(message, "utf-8"))
+    def greenFlag(self, to_update: Connection, opponent: Connection):
+        message = "sync " + str(opponent.sync) + " " + str(opponent.x) + " " + str(opponent.y) + " " + str(opponent.score)
+        to_update.conn.send(bytes(message, "utf-8"))
 
 if __name__ == "__main__":
     server = Server(65431)
