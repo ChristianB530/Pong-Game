@@ -175,7 +175,7 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
             
             pygame.draw.rect(screen, WHITE, ball)
             # ==== End Ball Logic =================================================================
-
+        
         # Drawing the dotted line in the center
         for i in centerLine:
             pygame.draw.rect(screen, WHITE, i)
@@ -186,6 +186,10 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
 
         pygame.draw.rect(screen, WHITE, topWall)
         pygame.draw.rect(screen, WHITE, bottomWall)
+
+        # Fixes white trails when running on windows with python rather than on linux with python3
+        pygame.display.flip()
+
         scoreRect = updateScore(lScore, rScore, screen, WHITE, scoreFont)
         pygame.display.update([topWall, bottomWall, ball, leftPaddle, rightPaddle, scoreRect, winMessage])
         clock.tick(60)
