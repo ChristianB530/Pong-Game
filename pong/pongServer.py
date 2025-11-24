@@ -1,9 +1,9 @@
 # =================================================================================================
-# Contributing Authors:	    <Anyone who touched the code>
-# Email Addresses:          <Your uky.edu email addresses>
-# Date:                     <The date the file was last edited>
-# Purpose:                  <How this file contributes to the project>
-# Misc:                     <Not Required.  Anything else you might want to include>
+# Contributing Authors:	    Ben Carey, Christian Bruwer, Caleb Burnett
+# Email Addresses:          bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Date:                     11/23/2025
+# Purpose:                  The server connects the players and pass information about the games to the players.
+#                           Such as paddle locations, scores, player inputs, synchronization variables etc.. 
 # =================================================================================================
 
 import socket
@@ -18,6 +18,7 @@ from time import sleep
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
+#Initiate the connection to players
 class Connection:
     def __init__(self, conn, side_str) -> None:
         self.conn: socket.SocketType = conn
@@ -27,6 +28,7 @@ class Connection:
         self.y: int = 0
         self.score: int = 0
 
+#Initiate the connection to spectators
 class Spectator:
     def __init__(self, conn):
         self.conn = conn
@@ -117,7 +119,7 @@ class Server:
                     self.right_flagged = False
 
             elif args[0] == "paddle":
-                #args = ["paddle", x, y, moving]
+                #args = ["paddle",side, x, y, moving, lscore, rscore]
                 side = args[1]
                 if side == "left":
                     self.left_connection.x = int(args[2])
