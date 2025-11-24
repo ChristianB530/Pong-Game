@@ -1,8 +1,9 @@
 # =================================================================================================
-# Contributing Authors:	    <Anyone who touched the code>
-# Email Addresses:          <Your uky.edu email addresses>
-# Date:                     <The date the file was last edited>
-# Purpose:                  <How this file contributes to the project>
+# Contributing Authors:	    Ben Carey, Christian Bruwer, Caleb Burnett
+# Email Addresses:          bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Date:                     11/23/2025
+# Purpose:                  The client runs the game logic and create GUI for the Pong-Game.
+#                           Send and Receive paddle informations, player inputs, and the scores from and to the server.
 # Misc:                     <Not Required.  Anything else you might want to include>
 # =================================================================================================
 
@@ -22,8 +23,7 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle, side: str, lscore: i
 
     #Ex: "paddle 100 100 up", "paddle 50 100 none"
     #The whole thing as string, the server split it.
-    #I implement the server size as well, the server side should recognize the by arg[0] = paddle
-    #Change it how you like tho 
+    #I implement the server side as well, the server side should recognize the by arg[0] = paddle
     packet = f"paddle {side} {x} {y} {moving} {lscore} {rscore}"
     client.send(packet.encode("utf-8"))
 
