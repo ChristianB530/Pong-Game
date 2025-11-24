@@ -3,7 +3,7 @@ Contact Info
 
 Group Members & Email Addresses:
 
-    Christian Bruwer, cebr276@uky.edu
+    Christian Brewer, cebr276@uky.edu
     Caleb Burnett, cdbu246@uky.edu
     Ben Carey, bjca251@uky.edu
 
