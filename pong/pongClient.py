@@ -1,5 +1,5 @@
 # =================================================================================================
-# Contributing Authors:	    Ben Carey, Christian Bruwer, Caleb Burnett
+# Contributing Authors:	    Ben Carey, Christian Brewer, Caleb Burnett
 # Email Addresses:          bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
 # Date:                     11/23/2025
 # Purpose:                  The client runs the game logic and create GUI for the Pong-Game.
