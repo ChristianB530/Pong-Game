@@ -139,6 +139,20 @@ class Server:
                     self.right_connection.y = int(args[3])
                     self.right_connection.moving = args[4]
                     self.right_connection.score = args[6]
+            elif args[0] == "restar":
+                #Reset the position and score
+                #This will reset if one party decide to do the reset.
+                self.left_connection.x = 50
+                self.left_connection.y = self.window_height // 2
+                self.left_connection.score = 0
+                self.right_connection.x = self.window_width - 50
+                self.right_connection.y = self.window_height // 2
+                self.right_connection.score = 0
+
+                # Notify both players so they reset locally too
+                self.left_connection.conn.send(b"reset_ack")
+                self.right_connection.conn.send(b"reset_ack")
+
 
 
         #Handdle disconnection
