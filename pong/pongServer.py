@@ -132,6 +132,8 @@ class Server:
                     self.right_connection.moving = args[4]
                     self.right_connection.score = args[6]
 
+
+
         print(f"Closing {addr}")
         if side == "left":
             self.left_connection = None
@@ -148,12 +150,7 @@ class Server:
         while True:
             sleep(0.01)
 
-            for tator in self.spectators:
-                message = "tator "
-                message += str(self.left_connection.x) + " " + str(self.left_connection.y) + " " + str(self.left_connection.score) + " "
-                message += str(self.right_connection.x) + " " + str(self.right_connection.y) + " " + str(self.right_connection.score)
-
-
+            # update players first
             if self.left_connection is None or self.right_connection is None:
                 continue
 
@@ -164,6 +161,23 @@ class Server:
             if self.left_connection.sync <= self.right_connection.sync and not self.right_flagged:
                 self.greenFlag(self.left_connection, self.right_connection)
                 self.right_flagged = True
+
+            # if statement for if 
+            for tator in self.spectators:
+                # message = "tator "
+                '''
+                # message structure = 
+                [0] = "spectator"
+                [1] = left x
+                [2] = left y
+                [3] = left score
+                [4] = right x
+                [5] = right y
+                [6] = right score 
+                '''
+                message += "spectator " + str(self.left_connection.x) + " " + str(self.left_connection.y) + " " + str(self.left_connection.score) + " "
+                message += str(self.right_connection.x) + " " + str(self.right_connection.y) + " " + str(self.right_connection.score)
+                Connection.conn.send(bytes(message, "utf-8"))
 
     def greenFlag(self, to_update: Connection, opponent: Connection):
         message = "sync " + str(opponent.sync) + " " + str(opponent.x) + " " + str(opponent.y) + " " + str(opponent.score)
