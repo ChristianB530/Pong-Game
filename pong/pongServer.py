@@ -87,8 +87,6 @@ class Server:
             if not recv:
                 break
 
-            print(f"Received from {addr}: {recv}")
-
             args = recv.split(' ')
             if args[0] == "get_rekt":
                 if self.left_connection is None:
@@ -114,6 +112,8 @@ class Server:
                 if args[2] == "left":
                     self.left_connection.sync = sync
                     self.left_flagged = False
+                    self.ball_pos[0] = args[3]
+                    self.ball_pos[1] = args[4]
                 else:
                     self.right_connection.sync = sync
                     self.right_flagged = False
@@ -151,8 +151,8 @@ class Server:
             for tator in self.spectators:
                 message = "tator "
                 message += str(self.left_connection.x) + " " + str(self.left_connection.y) + " " + str(self.left_connection.score) + " "
-                message += str(self.right_connection.x) + " " + str(self.right_connection.y) + " " + str(self.right_connection.score)
-
+                message += str(self.right_connection.x) + " " + str(self.right_connection.y) + " " + str(self.right_connection.score) + " " + str(self.ball_pos[0]) + " " + str(self.ball_pos[1]) + " "
+                tator.conn.send(bytes(message, "utf-8"))
 
             if self.left_connection is None or self.right_connection is None:
                 continue

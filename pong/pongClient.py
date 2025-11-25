@@ -27,12 +27,15 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle, side: str, lscore: i
     packet = f"paddle {side} {x} {y} {moving} {lscore} {rscore}"
     client.send(packet.encode("utf-8"))
 
+def syncSpectator(client: socket.socket) -> list[str]:
+    return client.recv(1024).decode("utf-8").split(' ')
+
 # this call will be blocking until opponent catches up.
 # let's test this; if it is too slow/jittery we can revise.
-def syncClient(client: socket.socket, sync: int, side: str) -> Tuple[int, int, int, int]:
+def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y: int) -> Tuple[int, int, int, int]:
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
-    s = "sync " + str(sync) + " " + side
+    s = "sync " + str(sync) + " " + side + " " + str(ball_x) + " " + str(ball_y)
     b = bytes(s, "utf-8")
     client.send(b)
 
@@ -108,15 +111,16 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_DOWN:
-                    playerPaddleObj.moving = "down"
+            elif playerPaddle != "spectator":
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_DOWN:
+                        playerPaddleObj.moving = "down"
 
-                elif event.key == pygame.K_UP:
-                    playerPaddleObj.moving = "up"
+                    elif event.key == pygame.K_UP:
+                        playerPaddleObj.moving = "up"
 
-            elif event.type == pygame.KEYUP:
-                playerPaddleObj.moving = ""
+                elif event.type == pygame.KEYUP:
+                    playerPaddleObj.moving = ""
 
         # =========================================================================================
         # Your code here to send an update to the server on your paddle's information,
@@ -125,18 +129,19 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         
         # Possible packet structure:
         # sendPaddle(client, playerPaddleObj, ball, lscore, rscore)
-        sendPaddle(client, playerPaddleObj, playerPaddle, lScore, rScore)
+        if playerPaddle != "spectator":
+            sendPaddle(client, playerPaddleObj, playerPaddle, lScore, rScore)
         
-        # =========================================================================================
+            # =========================================================================================
 
-        # Update the player paddle and opponent paddle's location on the screen
-        for paddle in [playerPaddleObj]:
-            if paddle.moving == "down":
-                if paddle.rect.bottomleft[1] < screenHeight-10:
-                    paddle.rect.y += paddle.speed
-            elif paddle.moving == "up":
-                if paddle.rect.topleft[1] > 10:
-                    paddle.rect.y -= paddle.speed
+            # Update the player paddle and opponent paddle's location on the screen
+            for paddle in [playerPaddleObj]:
+                if paddle.moving == "down":
+                    if paddle.rect.bottomleft[1] < screenHeight-10:
+                        paddle.rect.y += paddle.speed
+                elif paddle.moving == "up":
+                    if paddle.rect.topleft[1] > 10:
+                        paddle.rect.y -= paddle.speed
 
         # If the game is over, display the win message
         if lScore > 4 or rScore > 4:
@@ -148,7 +153,8 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         else:
 
             # ==== Ball Logic =====================================================================
-            ball.updatePos()
+            if playerPaddle != "spectator":
+                ball.updatePos()
 
             # If the ball makes it past the edge of the screen, update score, etc.
             if ball.rect.x > screenWidth:
@@ -206,14 +212,27 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # opponent's game
 
         # function returns opponent clock as an int
-        other_player_clock, opp_x, opp_y, opp_score = syncClient(client, sync, playerPaddle)
-        opponentPaddleObj.rect.x = opp_x
-        opponentPaddleObj.rect.y = opp_y
+        if playerPaddle == "spectator":
+            paddleInfo = syncSpectator(client)
+            opponentPaddleObj.rect.x = int(paddleInfo[1])
+            opponentPaddleObj.rect.y = int(paddleInfo[2])
+            lScore = int(paddleInfo[3])
 
-        if playerPaddle == "left":
-            rScore = opp_score
-        elif playerPaddle == "right":
-            lScore = opp_score
+            playerPaddleObj.rect.x = int(paddleInfo[4])
+            playerPaddleObj.rect.y = int(paddleInfo[5])
+            rScore = int(paddleInfo[6])
+
+            ball.rect.x = int(paddleInfo[7])
+            ball.rect.y = int(paddleInfo[8])
+        else:
+            other_player_clock, opp_x, opp_y, opp_score = syncClient(client, sync, playerPaddle, ball.rect.x, ball.rect.y)
+            opponentPaddleObj.rect.x = opp_x
+            opponentPaddleObj.rect.y = opp_y
+
+            if playerPaddle == "left":
+                rScore = opp_score
+            elif playerPaddle == "right":
+                lScore = opp_score
 
         #if other_player_clock > sync:
             #sync = other_player_clock
