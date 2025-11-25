@@ -32,7 +32,7 @@ def syncSpectator(client: socket.socket) -> list[str]:
 
 # this call will be blocking until opponent catches up.
 # let's test this; if it is too slow/jittery we can revise.
-def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y: int) -> Tuple[int, int, int, int]:
+def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y: int) -> Tuple[int, int, int, int, int, int, int]:
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
     s = "sync " + str(sync) + " " + side + " " + str(ball_x) + " " + str(ball_y)
@@ -50,10 +50,19 @@ def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y:
     opp_time = int(args[1])
     opp_x = int(args[2])
     opp_y = int(args[3])
-    opp_score = int(args[4])
+    lscore = int(args[4])
+    rscore = int(args[5])
+
+    ball_ret_x = 0
+    ball_ret_y = 0
+
+    # we expect the ball's position to come from the server if we're syncing on the right side
+    if side == "right":
+        ball_ret_x = int(args[6])
+        ball_ret_y = int(args[7])
 
     # this is where we update our own clock by returning the received packets clock value
-    return (opp_time, opp_x, opp_y, opp_score)
+    return (opp_time, opp_x, opp_y, lscore, rscore, ball_ret_x, ball_ret_y)
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
@@ -153,31 +162,31 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         else:
 
             # ==== Ball Logic =====================================================================
-            if playerPaddle != "spectator":
+            if playerPaddle == "left":
                 ball.updatePos()
 
-            # If the ball makes it past the edge of the screen, update score, etc.
-            if ball.rect.x > screenWidth:
-                lScore += 1
-                pointSound.play()
-                ball.reset(nowGoing="left")
-            elif ball.rect.x < 0:
-                rScore += 1
-                pointSound.play()
-                ball.reset(nowGoing="right")
-                
-            # If the ball hits a paddle
-            if ball.rect.colliderect(playerPaddleObj.rect):
-                bounceSound.play()
-                ball.hitPaddle(playerPaddleObj.rect.center[1])
-            elif ball.rect.colliderect(opponentPaddleObj.rect):
-                bounceSound.play()
-                ball.hitPaddle(opponentPaddleObj.rect.center[1])
-                
-            # If the ball hits a wall
-            if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
-                bounceSound.play()
-                ball.hitWall()
+                # If the ball makes it past the edge of the screen, update score, etc.
+                if ball.rect.x > screenWidth:
+                    lScore += 1
+                    pointSound.play()
+                    ball.reset(nowGoing="left")
+                elif ball.rect.x < 0:
+                    rScore += 1
+                    pointSound.play()
+                    ball.reset(nowGoing="right")
+                    
+                # If the ball hits a paddle
+                if ball.rect.colliderect(playerPaddleObj.rect):
+                    bounceSound.play()
+                    ball.hitPaddle(playerPaddleObj.rect.center[1])
+                elif ball.rect.colliderect(opponentPaddleObj.rect):
+                    bounceSound.play()
+                    ball.hitPaddle(opponentPaddleObj.rect.center[1])
+                    
+                # If the ball hits a wall
+                if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
+                    bounceSound.play()
+                    ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball)
             # ==== End Ball Logic =================================================================
@@ -225,14 +234,15 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
             ball.rect.x = int(paddleInfo[7])
             ball.rect.y = int(paddleInfo[8])
         else:
-            other_player_clock, opp_x, opp_y, opp_score = syncClient(client, sync, playerPaddle, ball.rect.x, ball.rect.y)
+            other_player_clock, opp_x, opp_y, lscore, rscore, ball_ret_x, ball_ret_y = syncClient(client, sync, playerPaddle, ball.rect.x, ball.rect.y)
             opponentPaddleObj.rect.x = opp_x
             opponentPaddleObj.rect.y = opp_y
 
-            if playerPaddle == "left":
-                rScore = opp_score
-            elif playerPaddle == "right":
-                lScore = opp_score
+            if playerPaddle == "right":
+                lScore = lscore
+                rScore = rscore
+                ball.rect.x = ball_ret_x
+                ball.rect.y = ball_ret_y
 
         #if other_player_clock > sync:
             #sync = other_player_clock

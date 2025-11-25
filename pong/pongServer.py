@@ -125,11 +125,14 @@ class Server:
                     self.left_connection.x = int(args[2])
                     self.left_connection.y = int(args[3])
                     self.left_connection.moving = args[4]
-                    self.left_connection.score = args[5]
                 elif side == "right":
                     self.right_connection.x = int(args[2])
                     self.right_connection.y = int(args[3])
                     self.right_connection.moving = args[4]
+
+                if self.left_connection:
+                    self.left_connection.score = args[5]
+                if self.right_connection:
                     self.right_connection.score = args[6]
 
         print(f"Closing {addr}")
@@ -158,15 +161,17 @@ class Server:
                 continue
 
             if self.left_connection.sync >= self.right_connection.sync and not self.left_flagged:
-                self.greenFlag(self.right_connection, self.left_connection)
+                self.greenFlag(self.right_connection, self.left_connection, send_ball = True)
                 self.left_flagged = True
 
             if self.left_connection.sync <= self.right_connection.sync and not self.right_flagged:
                 self.greenFlag(self.left_connection, self.right_connection)
                 self.right_flagged = True
 
-    def greenFlag(self, to_update: Connection, opponent: Connection):
-        message = "sync " + str(opponent.sync) + " " + str(opponent.x) + " " + str(opponent.y) + " " + str(opponent.score)
+    def greenFlag(self, to_update: Connection, opponent: Connection, send_ball = False):
+        message = "sync " + str(opponent.sync) + " " + str(opponent.x) + " " + str(opponent.y) + " " + str(self.left_connection.score) + " " + str(self.right_connection.score)
+        if send_ball:
+            message += " " + str(self.ball_pos[0]) + " " + str(self.ball_pos[1])
         to_update.conn.send(bytes(message, "utf-8"))
 
 if __name__ == "__main__":
