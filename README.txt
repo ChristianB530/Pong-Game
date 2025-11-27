@@ -10,21 +10,40 @@ Group Members & Email Addresses:
 Versioning
 ==========
 
-Github Link: 
+Github Link: https://github.com/ChristianB530/Pong-Game
 
 General Info
 ============
-This file describes how to install/run your program and anything else you think the user should know
+This project uses simple socket programming to synchronize two clients playing
+the classic game Pong together. By using a server, we can connect two players
+an arbitrary distance away to the same server, provided its hosted on an
+accessible IP address.
 
 Install Instructions
 ====================
 
-Run the following line to install the required libraries for this project:
+A few of us *nix users needed to create a virtual environment in order to run
+the project. To do so, open a terminal and run the following lines:
 
-`pip3 install -r requirements.txt`
+```bash
+python3 -m venv .venv/
+source .venv/bin/activate
+```
+
+Now you should be able to run pip commands from the terminal without getting
+pesky "externally managed environment" errors and without needing to mess with
+path dependencies.
+
+In any case, run the following line to install the required libraries for this
+project:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+The only requirement for this project is the latest `pygame`.
 
 Known Bugs
 ==========
-- The server doesn't work because the logic isn't yet written.
-- The client doesn't speak to the server
-
+- It crashes when a client disconnects from the server.  
+- The clients that are spectators have sync issues.  
