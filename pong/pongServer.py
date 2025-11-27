@@ -10,8 +10,15 @@ import socket
 import threading
 from time import sleep
 
-#Connection class for player
-#Stores data for each player such as paddle position, score, and synchronization value.
+# =====================================================
+# Author: Ben Carey, Caleb Burnett
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu
+# Uses and Invariants:
+# - Used to serialize game state received from a client. Also used to "green
+#   flag" clients once they are synced.
+# - Connection remains active to client during its lifetime.
+# - side_str never changes.
+# =====================================================
 class Connection:
     def __init__(self, conn, side_str) -> None:
         self.conn: socket.SocketType = conn
@@ -21,9 +28,12 @@ class Connection:
         self.y: int = 0
         self.score: int = 0
 
-#Connection Class for spectator
-#Spectator receive game information
-#Spectator are not allow to send information to the server
+# =====================================================
+# Author: Ben Carey
+# Email Address: bjca251@uky.edu
+# Uses and Invariants:
+# - Used to update game state sent to a spectator.
+# =====================================================
 class Spectator:
     def __init__(self, conn):
         self.conn = conn
@@ -34,27 +44,15 @@ class Spectator:
         self.right_y = 0
         self.right_score = 0
 
-#Initiate the connection to players
-class Connection:
-    def __init__(self, conn, side_str) -> None:
-        self.conn: socket.SocketType = conn
-        self.sync: int = 0
-        self.side_str: str = side_str
-        self.x: int = 0
-        self.y: int = 0
-        self.score: int = 0
-
-#Initiate the connection to spectators
-class Spectator:
-    def __init__(self, conn):
-        self.conn = conn
-        self.left_x = 0
-        self.left_y = 0
-        self.left_score = 0
-        self.right_x = 0
-        self.right_y = 0
-        self.right_score = 0
-
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Uses and Invariants:
+# - Synchronizes clients connected and playing pong together.
+# - Distributes client information to opponents and spectators.
+# - Relays important game state information from the main client (the left
+#   client) to the other clients.
+# =====================================================
 class Server:
     def __init__(self, port: int):
         #Window Size
@@ -77,33 +75,40 @@ class Server:
         # x,y coords for each
         # may be useful to pull out paddle states into classes, but might be too much
 
-    #Start and listen to clients
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Uses and Invariants:
+# - Begins running the server. Should only be called once, and will block until
+#   the server closes.
+# =====================================================
     def start(self):
-        # some kind of data initialization
-        # main loop...
-        #Create socket
+        # Create a new socket.
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Set configuration so that we free the port once the server closes.
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        #listen all network
+        # We host on the local machine.
         address = "0.0.0.0"
         self.sock.bind((address, self.port))
+        # Begin listening for connections.
         self.sock.listen()
         print("Server started at " + address + ":" + str(self.port))
-        #Background game update
+        # Start server game update thread (will synchronize clients).
         threading.Thread(target=Server.update, args=(self,0), daemon=True).start()
 
-        #Always accept connections
+        # Loop forever, spawning new threads for connected clients as they join.
         while True:
             conn, addr = self.sock.accept()
             print(f"Connected to {addr}")
             threading.Thread(target=Server.handleClient, args=(self, conn, addr), daemon=True).start()
 
-        # what happens when one client wins? endgame state?
-        # restart is extra credit... :D
-    
-    # handles message from a client
-    def handleClient(self, conn, addr):
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Uses and Invariants: - Called in a newly spawned thread for each client that connects to the server. - Processes all packets sent by the client until the client disconnects.
+# =====================================================
+    def handleClient(self, conn: socket.SocketType, addr: str):
         print("connection get!")
         side = ""
         recv = None
@@ -113,25 +118,23 @@ class Server:
                 break
 
             args = recv.split(' ')
+            # Handle client connection establishment.
             if args[0] == "get_rekt":
                 if self.left_connection is None:
                     side_str = "left"
                     self.left_connection = Connection(conn, 0)
-                    #self.left_connection.x = 10
-                    #self.left_connection.y = (self.screenHeight/2) - (25)
                 elif self.right_connection is None:
                     side_str = "right"
                     self.right_connection = Connection(conn, 0)
-                    #self.right_connection.x = self.screenWidth - 20
-                    #self.right_connection.y = (self.screenHeight/2) - (25)
                 else:
                     side_str = "spectator"
                     self.spectators.append(Spectator(conn))
 
+                # Let client prepare itself.
                 response = "no_u 800 600 " + side_str
                 conn.send(bytes(response, "utf-8"))
                 side = side_str
-
+            # Handle if client sends a sync packet, updating local game state.
             elif args[0] == "sync":
                 sync = int(args[1])
                 if args[2] == "left":
@@ -143,6 +146,7 @@ class Server:
                     self.right_connection.sync = sync
                     self.right_flagged = False
 
+            # Handle if client sends current paddle information.
             elif args[0] == "paddle":
                 #args = ["paddle",side, x, y, moving, lscore, rscore]
                 side = args[1]
@@ -159,6 +163,7 @@ class Server:
                     self.left_connection.score = args[5]
                 if self.right_connection:
                     self.right_connection.score = args[6]
+            # Handle if client requests a restart.
             elif args[0] == "restart":
                 #Reset the position and score
                 #This will reset if one party decide to do the reset.
@@ -205,7 +210,7 @@ class Server:
                     self.right_connection.sync = sync
                     self.right_flagged = False
             #Paddle info update
-            #args = ["paddle",side, x, y, moving, lscore, rscore]
+            #args = ["paddle",side, x, y, moving (direction), lscore, rscore]
             elif args[0] == "paddle":
                 side = args[1]
                 if side == "left":
@@ -234,7 +239,7 @@ class Server:
 
 
 
-        #Handdle disconnection
+        #Handle disconnection
         print(f"Closing {addr}")
         if side == "left":
             self.left_connection = None
@@ -248,11 +253,23 @@ class Server:
                     break
         conn.close()
 
-    #Main server update
-    def update(self, foo):
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Uses and Invariants:
+# - Updates all spectators with full game state information.
+# - Syncs clients by "flagging" which clients can proceed to update. In doing
+#   so, we ensure that clients have the opportunity to catch up by a frame to
+#   the opponents state.
+# - NOTE: foo has no use; it is required for ensuring that we can bind
+#   parameters to member functions properly when calling the Thread
+#   constructor.
+# =====================================================
+    def update(self, foo: int):
         while True:
             sleep(0.01)
 
+            # update spectators.
             for tator in self.spectators:
                 message = "tator "
                 message += str(self.left_connection.x) + " " + str(self.left_connection.y) + " " + str(self.left_connection.score) + " "

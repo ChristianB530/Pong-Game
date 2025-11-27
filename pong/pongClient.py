@@ -15,10 +15,30 @@ from typing import Tuple
 
 from assets.code.helperCode import *
 
+# =====================================================
+# Author: Christian Brewer
+# Email Address: cebr276@uky.edu
+# Preconditions: the client is an active connection and this function is called
+# in a client-handling thread.
+# Function Invariants: The client will remain open after this function is
+# called.
+# =====================================================
 def restart(client: socket.socket):
     packet = f"restart"
     client.send(packet.encode("utf-8"))
 
+# =====================================================
+# Author: Ben Carey, Caleb Burnett
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu
+# Preconditions: The playerPaddle object and side string correspond to the same
+# player side. The client must be a client being handled in a client-handling
+# thread.
+# Function Invariants: The client will remain open after this function is
+# called. The left score and right score will be synchronized between two
+# connected clients, with the main game-loop driver being the left client. This
+# implies that the total scores and the ball position is managed by the left
+# client.
+# =====================================================
 def sendPaddle(client: socket.socket, playerPaddle: Paddle, side: str, lscore: int, rscore: int):
     # send paddle data to server
     x = playerPaddle.rect.x
@@ -31,11 +51,29 @@ def sendPaddle(client: socket.socket, playerPaddle: Paddle, side: str, lscore: i
     packet = f"paddle {side} {x} {y} {moving} {lscore} {rscore}"
     client.send(packet.encode("utf-8"))
 
+# =====================================================
+# Author: Ben Carey, Caleb Burnett
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu
+# Preconditions: The client must be a client being handled in a client-handling
+# thread.
+# Function Invariants: The client will remain open after this function is
+# called. NOTE: it will block until it receives from the server.
+# =====================================================
 def syncSpectator(client: socket.socket) -> list[str]:
     return client.recv(1024).decode("utf-8").split(' ')
 
-# this call will be blocking until opponent catches up.
-# let's test this; if it is too slow/jittery we can revise.
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Preconditions: The client is handled by a client-handling thread. The side
+# parameter corresponds with the client that is treated as that side (the
+# left-client socket and "right" side string should never be passed, for
+# example.)
+# Function Invariants: Sends a packet to the server with client details such at
+# paddle location, ball location (if you're the left client), and the sync
+# variable. It then waits on a response from the server before continuing the
+# game loop. NOTE: by design, it will block until it receives from the server.
+# =====================================================
 def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y: int) -> Tuple[int, int, int, int, int, int, int]:
     # send current sync to server, wait for server to give green flag for continue.
     # spinloop here until we receive greenFlag from server
@@ -76,9 +114,13 @@ def syncClient(client: socket.socket, sync: int, side: str, ball_x: int, ball_y:
     # this is where we update our own clock by returning the received packets clock value
     return (opp_time, opp_x, opp_y, lscore, rscore, ball_ret_x, ball_ret_y)
 
-# This is the main game loop.  For the most part, you will not need to modify this.  The sections
-# where you should add to the code are marked.  Feel free to change any part of this project
-# to suit your needs.
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Preconditions: Client points to a valid socket connected to the server.
+# Function Invariants: Full game loop, will return and soon after terminate the
+# program.
+# =====================================================
 def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: socket.socket) -> None:
     
     # Pygame inits
@@ -236,7 +278,10 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
         # opponent's game
 
         # function returns opponent clock as an int
+        # If the paddle is a "spectator" (meaning no paddle can be controlled
+        # by the user...)
         if playerPaddle == "spectator":
+            # synchronize game state
             paddleInfo = syncSpectator(client)
             opponentPaddleObj.rect.x = int(paddleInfo[1])
             opponentPaddleObj.rect.y = int(paddleInfo[2])
@@ -249,10 +294,13 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
             ball.rect.x = int(paddleInfo[7])
             ball.rect.y = int(paddleInfo[8])
         else:
+            # otherwise, send current information to the server and receive
+            # opponent information.
             other_player_clock, opp_x, opp_y, lscore, rscore, ball_ret_x, ball_ret_y = syncClient(client, sync, playerPaddle, ball.rect.x, ball.rect.y)
             opponentPaddleObj.rect.x = opp_x
             opponentPaddleObj.rect.y = opp_y
 
+            # if the reset function has been called, restart the game.
             if lscore == 0 and rscore == 0 and opp_x == 0 and opp_y == 0 and other_player_clock == 0:
                 playerPaddleObj.rect.y = (screenHeight/2) - (paddleHeight/2)
                 opponentPaddleObj.rect.y = (screenHeight/2) - (paddleHeight/2)
@@ -260,29 +308,29 @@ def playGame(screenWidth: int, screenHeight: int, playerPaddle: str, client: soc
                 ball.reset("left")
                 continue
 
+            # update ball position and scores from left client game state.
             if playerPaddle == "right":
                 lScore = lscore
                 rScore = rscore
                 ball.rect.x = ball_ret_x
                 ball.rect.y = ball_ret_y
 
-        #if other_player_clock > sync:
-            #sync = other_player_clock
-
-
-        # =========================================================================================
-
 # Packet Structure:
 #
-# (int, int, bool):
+# (int, int, str):
 # - window width,
 # - window height,
-# - side of paddle (True if you're the left paddle.)
+# - side of paddle
 # sockets are raw binary streams, so we will use string parsing to convert what
 # we receive from sockets into data values.
 
-# Note: this function blocks while waiting for server response. It is called
-# once at the start of the client script.
+# =====================================================
+# Author: Ben Carey
+# Email Address: bjca251@uky.edu
+# Preconditions: None.
+# Function Invariants: the client shall be a valid client socket connected to
+# the server at the supplied IP and port number.
+# =====================================================
 def connectClient(client: socket.socket, ip: str, port: str) -> Tuple[int, int, str]:
     # connect to server
     client.connect((ip, int(port)))
@@ -330,12 +378,21 @@ def joinServer(ip: str, port: str, errorLabel: tk.Label, app: tk.Tk) -> None:
     errorLabel.update()     
 
     # Close this window and start the game with the info passed to you from the server
-    app.withdraw()     # Hides the window (we'll kill it later)
-    playGame(window_width, window_height, side, client)  # User will be either left or right paddle
-    app.quit()         # Kills the window
+    # Hides the window (we'll kill it later)
+    app.withdraw()
+    # User will be either left, right, or spectator client
+    playGame(window_width, window_height, side, client)
+    # Kills the window
+    app.quit()
 
 
-# This displays the opening screen, you don't need to edit this (but may if you like)
+# =====================================================
+# Author: Ben Carey, Caleb Burnett, Christian Brewer
+# Email Address: bjca251@uky.edu, cdbu246@uky.edu, cebr276@uky.edu
+# Preconditions: none
+# Function Invariants: This displays the opening screen, you don't need to edit
+#                      this (but may if you like). We did not modify this code.
+# =====================================================
 def startScreen():
     app = tk.Tk()
     app.title("Server Info")
